@@ -38,3 +38,7 @@
 #define CARDTHRCTL ((volatile unsigned int *) 0XFF704100)
 #define BACK_END_POWER_R ((volatile unsigned int *) 0XFF704104)
 #define DATA ((volatile unsigned int *) 0XFF704200)
+//Clock manager peripheral
+#define PERIPHERALS_EN ((volatile unsigned int *) 0xFFD040A0)
+//sdmmc controller control register
+#define SYSTEM_SDMMC_CTRL ((volatile unsigned int *) 0xFFD08108)
