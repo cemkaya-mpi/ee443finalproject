@@ -15,24 +15,24 @@ char sevenseg(short number){
 }
 
 void hexDisp(volatile unsigned int digits){
-	int* SEG0 = (int*)0xFF200020;
-	int* SEG1 = (int*)0xFF200030;
-	short dummy;
-	dummy=digits%10;
-	char HEX0 = sevenseg(dummy);
-	dummy = (digits/10) %10 ;
-	char HEX1 = sevenseg(dummy);
-	dummy = (digits/100) %10;
-	char HEX2 = sevenseg(dummy);
-	dummy = (digits/1000) %10;
-	char HEX3 = sevenseg(dummy);
-	dummy = (digits/10000) %10;
-	char HEX4 = sevenseg(dummy);
-	dummy = (digits/100000) %10;
-	char HEX5 = sevenseg(dummy);
+  int* SEG0 = (int*)0xFF200020;
+  int* SEG1 = (int*)0xFF200030;
+  short dummy;
+  dummy=digits%10;
+  char HEX0 = sevenseg(dummy);
+  dummy = (digits/10) %10 ;
+  char HEX1 = sevenseg(dummy);
+  dummy = (digits/100) %10;
+  char HEX2 = sevenseg(dummy);
+  dummy = (digits/1000) %10;
+  char HEX3 = sevenseg(dummy);
+  dummy = (digits/10000) %10;
+  char HEX4 = sevenseg(dummy);
+  dummy = (digits/100000) %10;
+  char HEX5 = sevenseg(dummy);
 
-	*SEG0 = (HEX3 << 24) | (HEX2 << 16) | (HEX1 << 8) | (HEX0);
-	*SEG1 = (HEX5 << 8)| HEX4;
+  *SEG0 = (HEX3 << 24) | (HEX2 << 16) | (HEX1 << 8) | (HEX0);
+  *SEG1 = (HEX5 << 8)| HEX4;
 }
 
 void powerOn(){
@@ -149,6 +149,10 @@ void setClocks(){
   //check data_busy bit9 of the STATUS register.
   unsigned int temp = *STATUS;
   temp = temp & 0x00000200;
+  while(temp !=0){
+    temp = *STATUS;
+    temp = temp & 0x00000200;
+  }
   // reset cclk_enable of CLKENA to 0
   *CLKENA = 0;
   // reset CLKSRC register to 0
@@ -166,18 +170,18 @@ void setClocks(){
   //Check for hardware lock??
   // Reset the sdmmc_clk_enable bit8 to 0 in the enable register of the
   // clock manager peripheral PLL group (perpllgrp).
-  temp = *EN;
+  temp = *PERIPHERALS_EN;
   temp = temp & 0b111011111111;
-  *EN = temp;
+  *PERIPHERALS_EN = temp;
   //In CTRL register of the SDMMC group, set drvsel bits[2:0] and smplse1 bits[5:3]
   temp = *SYSTEM_SDMMC_CTRL;
   temp = 0;
   *SYSTEM_SDMMC_CTRL = temp;
   // Set the sdmmc_clk_enable bit8 to 1 in the enable register of the
   // clock manager peripheral PLL group (perpllgrp).
-  temp = *EN;
+  temp = *PERIPHERALS_EN;
   temp = temp | 0b000100000000;
-  *EN = temp;
+  *PERIPHERALS_EN = temp;
   // Set the clkdiv register of the controller to the correct divider value for the required clock frequency
   // Clock divider is 2^n
   // TODO:Default clock is ??
@@ -240,10 +244,61 @@ int main(void){
   //set watermark
   setWatermark();
 
-  //Artik kartin kullanima hazir olmasi lazim.
+  //Artik kartin kullanima hazir olmasi lazim. Data okumaya calisalim.
+  //Confirming transfer state
+  //send SD/SDIO SEND_STATUS (CMD13) command
+  send_command(13, 0);
+  //TODO:check busy status. Wait until not busy.
+  unsigned int isBusy = *STATUS;
+  isBusy = isBusy & 0x00000200;
+  while(isBusy !=0){
+    isBusy = *STATUS;
+    isBusy = isBusy & 0x00000200;
+  }
 
+  //TODO:check transfer status. If card is in the stand-by state, issue an SD/SDIO SELECT/
+  //DESELECT_CARD (CMD7) command to place it in the transfer state.
 
-  *BYTCNT = 32; //Read 32 bytes
-  *BLKSIZ = 8;  //8 bytes per block
+  //Single/Multiple block read
+  *BYTCNT = 32; // Read 32 bytes
+  *BLKSIZ = 8;  // 8 bytes per block
+  //TODO: card read threshold olayini anla
+  //*CARDTHRCTL = ??; 0 kalcaksa hizli okumaya dikkat et.
+  //0x00000000 0x3FFFFFFF DDR3 Memory
+  unsigned int TARGET_MEMORY_ADDRESS = 0x20000000;
+  unsigned int TARGET_SDCARD_ADDRESS = 0x00000000;
+  //Read block multiple, CMD18
+  send_command(18, TARGET_SDCARD_ADDRESS);
+  //TODO: check for all errors. Implement something in case of error.
+  //Check if dcrc(bit7), bds(bit9), sbe(bit13), ebe(bit15) is one.
+  unsigned int  flag = *RINTSTS;
+  flag = flag & 0b01010001010000000;
+  if (flag==0) hexDisp(123456); //success
+  else hexDisp(666);            //error
+
+  //Read data as soon as it is available.
+  unsigned int flag = 1;
+  while(flag){
+    //If a DTO interrupt(bit3) is received, data transfer is over. read everything and exit.
+    unsigned int temp = *RINTSTS;
+    temp = temp & 0b1000;
+    if (temp==0){
+      flag=1;
+    }else{
+      flag=0;
+    }
+    //read number of available bytes in fifo buffer.
+    unsigned int temp = *STATUS;
+    temp = temp &  0x3FFE0000;
+    unsigned volatile int numAvailable = (temp >> 17);
+    while (numAvailable != 0){
+      signed int readData = *DATA;
+      *TARGET_MEMORY_ADDRESS = readData;
+      //TODO: Bu boyle mi artiyodu
+      TARGET_MEMORY_ADDRESS++;
+      numAvailable--;
+    }
+  }
+  //sd cardin ilk 32 bayti 0x20000000 adresinde kayitli olmali.
   return 0;
 }
