@@ -1,5 +1,6 @@
 #include "proje.h"
 
+
 char sevenseg(short number){
   if      (number==0) return 0b0111111;
   else if (number==1) return 0b0000110;
@@ -13,6 +14,7 @@ char sevenseg(short number){
   else if (number==9) return 0b1101111;
   else return 0b1111110;
 }
+
 
 void hexDisp(volatile unsigned int digits){
   int* SEG0 = (int*)0xFF200020;
@@ -35,9 +37,11 @@ void hexDisp(volatile unsigned int digits){
   *SEG1 = (HEX5 << 8)| HEX4;
 }
 
+
 void powerOn(){
   *PWREN = 0b1;
 }
+
 
 void disableInterrupts(){
   *INTMASK = 0;
@@ -47,6 +51,7 @@ void disableInterrupts(){
   temp = temp & 0xFFFFFFEF;   //set int_enable to 0
   *CTRL = temp;
 }
+
 
 void send_command(unsigned int command, unsigned int argument){
   *CMDARG = argument;  //Send with argument 'argument'
@@ -80,6 +85,7 @@ void send_command(unsigned int command, unsigned int argument){
   else hexDisp(666);            //error
   return;
 }
+
 
 void discoverCardStack(){
   *CTYPE = 0;
@@ -144,6 +150,7 @@ void discoverCardStack(){
   hexDisp(response);
 }
 
+
 void setClocks(){
   //verify card is not in use.
   //check data_busy bit9 of the STATUS register.
@@ -192,10 +199,12 @@ void setClocks(){
   return;
 }
 
+
 void setTimeout(){
   //set response timeout, with max data timeout
   *TMOUT = 0xFFFFFF40;
 }
+
 
 void setDebounce(){
   //TODO: determine this value
@@ -208,11 +217,18 @@ void setWatermark(){
   *FIFOTH = temp;
 }
 
+
 void wait(unsigned int num){
-  while(num>0){
-    --num;
+  unsigned int temp = num;
+  unsigned int i = 0;
+  for(i=0; i<1e6; i++){
+    temp=num;
+    while(temp>0){
+      --temp;
+    }
   }
 }
+
 
 int main(void){
   //TODO:Confirm voltage setting
@@ -220,10 +236,7 @@ int main(void){
   powerOn();
   //Wait for power ramp up
   hexDisp(0);
-  int i;
-  for(i=0; i<1e6; i++){
-    wait(0xFFFFFFFF); //1s?
-  }
+  wait(0xFFFFFFFF); //1s?
   hexDisp(1);
   //Disable Interrrupts
   disableInterrupts();
