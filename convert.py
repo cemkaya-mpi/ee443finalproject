@@ -19,5 +19,6 @@ with open("sample.bin", "wb") as binary_file:
         currentframe = obj.readframes(1)
         print (currentframe);
         num_bytes_written += binary_file.write(currentframe)
+        #num_bytes_written += binary_file.write(b'\x00')
     print("Wrote %d bytes." % num_bytes_written)
 obj.close()

@@ -25,7 +25,6 @@ char sevenseg(short number){
   else return 0b1111110;
 }
 
-
 void hexDisp(volatile unsigned int digits){
   int* SEG0 = (int*)0xFF200020;
   int* SEG1 = (int*)0xFF200030;
@@ -47,14 +46,12 @@ void hexDisp(volatile unsigned int digits){
   *SEG1 = (HEX5 << 8)| HEX4;
 }
 
-
 void powerOn(){
   *PWREN = 0b1;
   wait(0xFF);
 }
 
-
-void disableInterrupts(){  
+void disableInterrupts(){
   *RINTSTS = 0XFFFFFFFF;
   *INTMASK = 0x0;
   //unsigned int temp;
@@ -63,7 +60,6 @@ void disableInterrupts(){
   //*CTRL = temp;
   *CTRL = 0b10000;	//enable!?
 }
-
 
 void send_command(unsigned int command, unsigned int argument){
   *CMDARG = argument;  //Send with argument 'argument'
@@ -97,7 +93,6 @@ void send_command(unsigned int command, unsigned int argument){
   else hexDisp(666);            //error
   return;
 }
-
 
 void discoverCardStack(){
   *CTYPE = 0;
@@ -164,8 +159,6 @@ void discoverCardStack(){
   hexDisp(response);
 }
 
-
-
 void setClocks(){
 
   //verify card is not in use.
@@ -186,8 +179,8 @@ void setClocks(){
 	*CMD = temp;
 	//wait(0xFF);
     //wait until start_cmd(31) and update_clk_regs_only(21) bits change to zero
-	
-	
+
+
   volatile unsigned int flag = 1;
 while(flag != 0){
     flag = *CMD;
@@ -199,15 +192,15 @@ while(flag != 0){
   // clock manager peripheral PLL group (perpllgrp).
   wait(0xFF);
   *PERIPHERALS_EN = 0b111011111111;
-  
+
   //In CTRL register of the SDMMC group, set drvsel bits[2:0] and smplse1 bits[5:3]
   //temp = *SYSTEM_SDMMC_CTRL;
-  
+
   *SYSTEM_SDMMC_CTRL = 0x3;
   // Set the sdmmc_clk_enable bit8 to 1 in the enable register of the
   // clock manager peripheral PLL group (perpllgrp).
   //temp = *PERIPHERALS_EN;
-  
+
   *PERIPHERALS_EN = 0b111111111111;
   // Set the clkdiv register of the controller to the correct divider value for the required clock frequency
   // Clock divider is 2^n
@@ -216,10 +209,10 @@ while(flag != 0){
   *CLKDIV = 0xFF;
   //set cclk_enable bit of CLKENA to 1
   *CLKENA = 1;
-  
+
   	temp = 0x80202000;
 	*CMD = temp;
-	
+
 	flag = 1;
 	while(flag != 0){
 		flag = *CMD;
@@ -233,12 +226,10 @@ while(flag != 0){
   return;
 }
 
-
 void setTimeout(){
   //set response timeout, with max data timeout
   *TMOUT = 0xFFFFFF40;
 }
-
 
 void setDebounce(){
   //TODO: determine this value
@@ -250,7 +241,6 @@ void setWatermark(){
   unsigned int temp = 512 + (511 << 16);
   *FIFOTH = temp;
 }
-
 
 void reset(){
 
@@ -266,11 +256,11 @@ int main(void){
   powerOn();
   setClocks();
   hexDisp(100);
-  
+
   loop : goto loop;
 
   //Disable Interrrupts
-  
+
   // TODO: Discover the card stack according to the card type. For discovery, you must restrict the clock frequency
   // to 400 kHz in accordance with SD/MMC/CE-ATA standards. For more information, refer to
 
